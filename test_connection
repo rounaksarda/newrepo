@@ -1,0 +1,71 @@
+name: Terraform + Ansible on Azure
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  terraform:
+    name: Terraform Azure Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+        working-directory: ./terraform
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./terraform
+
+      # Optional: Terraform Plan (preview infrastructure changes)
+      - name: Terraform Plan
+        run: terraform plan
+        working-directory: ./terraform
+
+  ansible:
+    name: Ansible on Azure
+    runs-on: ubuntu-latest
+    needs: terraform
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+
+      - name: Ansible Syntax Check
+        run: ansible-playbook playbook.yml --syntax-check
+        working-directory: ./ansible
+
+      # Optional: Ansible dry run (check mode)
+      - name: Ansible Check (Dry Run)
+        run: ansible-playbook playbook.yml --check
+        working-directory: ./ansible
